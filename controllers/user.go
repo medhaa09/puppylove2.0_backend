@@ -109,9 +109,9 @@ func SendHeart(c *gin.Context) {
 
 	if info.ENC1 != "" && info.SHA1 != "" {
 		newheart1 := models.SendHeart{
-			SHA: info.SHA1,
-			ENC: info.ENC1,
-			// SONG:           info.SONG1,
+			SHA:            info.SHA1,
+			ENC:            info.ENC1,
+			SONG:           info.SONG1,
 			GenderOfSender: info.GenderOfSender,
 		}
 		if err := Db.Create(&newheart1).Error; err != nil {
@@ -129,9 +129,9 @@ func SendHeart(c *gin.Context) {
 
 	if info.ENC2 != "" && info.SHA2 != "" {
 		newheart2 := models.SendHeart{
-			SHA: info.SHA2,
-			ENC: info.ENC2,
-			// SONG:           info.SONG2,
+			SHA:            info.SHA2,
+			ENC:            info.ENC2,
+			SONG:           info.SONG2,
 			GenderOfSender: info.GenderOfSender,
 		}
 		if err := Db.Create(&newheart2).Error; err != nil {
@@ -142,9 +142,9 @@ func SendHeart(c *gin.Context) {
 
 	if info.ENC3 != "" && info.SHA3 != "" {
 		newheart3 := models.SendHeart{
-			SHA: info.SHA3,
-			ENC: info.ENC3,
-			// SONG:           info.SONG3,
+			SHA:            info.SHA3,
+			ENC:            info.ENC3,
+			SONG:           info.SONG3,
 			GenderOfSender: info.GenderOfSender,
 		}
 		if err := Db.Create(&newheart3).Error; err != nil {
@@ -155,9 +155,9 @@ func SendHeart(c *gin.Context) {
 
 	if info.ENC4 != "" && info.SHA4 != "" {
 		newheart4 := models.SendHeart{
-			SHA: info.SHA4,
-			ENC: info.ENC4,
-			// SONG:           info.SONG4,
+			SHA:            info.SHA4,
+			ENC:            info.ENC4,
+			SONG:           info.SONG4,
 			GenderOfSender: info.GenderOfSender,
 		}
 		if err := Db.Create(&newheart4).Error; err != nil {
@@ -169,8 +169,8 @@ func SendHeart(c *gin.Context) {
 	for _, heart := range info.ReturnHearts {
 		enc := heart.Enc
 		sha := heart.SHA
-
-		if err := ReturnClaimedHeart(enc, sha, userID.(string)); err != nil {
+		song := heart.Song
+		if err := ReturnClaimedHeart(enc, sha, song, userID.(string)); err != nil {
 			c.JSON(http.StatusAccepted, gin.H{"message": "Hearts Sent Successfully !!, but found invalid Claim Requests. It will be recorded"})
 			return
 		}
@@ -244,7 +244,7 @@ func (e HeartClaimError) Error() string {
 	return e.Message
 }
 
-func ReturnClaimedHeart(enc string, sha string, userId string) error {
+func ReturnClaimedHeart(enc string, sha string, song string, userId string) error {
 	heartModel := models.HeartClaims{}
 	if enc == "" || sha == "" {
 		return nil
@@ -259,8 +259,9 @@ func ReturnClaimedHeart(enc string, sha string, userId string) error {
 	}
 
 	heartclaim := models.ReturnHearts{
-		SHA: sha,
-		ENC: enc,
+		SHA:  sha,
+		ENC:  enc,
+		SONG: song,
 	}
 	if err := Db.Create(&heartclaim).Error; err != nil {
 		return HeartClaimError{Message: "Something Unexpected Occurred while adding the heart claim."}
@@ -300,6 +301,7 @@ func HeartClaim(c *gin.Context) {
 		Id:   info.Enc,
 		SHA:  info.SHA,
 		Roll: userID.(string),
+		Song: heartModel.SONG,
 	}
 	if err := Db.Create(&heartclaim).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -356,7 +358,8 @@ func ReturnClaimedHeartLate(c *gin.Context) {
 	for _, heart := range info.ReturnHearts {
 		enc := heart.ENC
 		sha := heart.SHA
-		if err := ReturnClaimedHeart(enc, sha, userID.(string)); err != nil {
+		song := heart.SONG
+		if err := ReturnClaimedHeart(enc, sha, song, userID.(string)); err != nil {
 			c.JSON(http.StatusAccepted, gin.H{"message": "Found invalid Claim Requests. It will be recorded"})
 			return
 		}
@@ -461,6 +464,8 @@ func VerifyReturnHeart(c *gin.Context) {
 	returnHeartClaim := models.MatchTable{
 		Roll1: userID.(string),
 		Roll2: heartClaim.Roll,
+		//SONG12: heartModel.SONG,
+		SONG21: heartModel.SONG,
 	}
 	if err := Db.Create(&returnHeartClaim).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -470,10 +475,37 @@ func VerifyReturnHeart(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{"message": "Heart Claim Success"})
 }
 
+// func MatchesHandler(c *gin.Context) {
+// 	if models.PublishMatches {
+
+// 		// resultsmap := make(map[string]bool)
+// 		userID, _ := c.Get("user_id")
+// 		var user models.User
+
+// 		Db.Model(&user).Where("id=?", userID).First(&user)
+
+// 		if !user.Publish {
+// 			c.JSON(http.StatusOK, gin.H{"msg": "You choose not to publish results"})
+// 			return
+// 		}
+
+// 		matches := strings.Split(user.Matches, ",")
+
+// 		// for _, match := range matches {
+// 		// 	resultsmap[match] = true
+// 		// }
+// 		// results := []string{}
+// 		// for key := range resultsmap {
+// 		// 	results = append(results, key)
+// 		// }
+// 		c.JSON(http.StatusOK, gin.H{"matches": matches})
+// 		return
+
+//		}
+//		c.JSON(http.StatusOK, gin.H{"msg": "Matches not yet published"})
+//	}
 func MatchesHandler(c *gin.Context) {
 	if models.PublishMatches {
-
-		// resultsmap := make(map[string]bool)
 		userID, _ := c.Get("user_id")
 		var user models.User
 
@@ -485,18 +517,40 @@ func MatchesHandler(c *gin.Context) {
 		}
 
 		matches := strings.Split(user.Matches, ",")
+		matchesWithSongs := []map[string]string{}
 
-		// for _, match := range matches {
-		// 	resultsmap[match] = true
-		// }
-		// results := []string{}
-		// for key := range resultsmap {
-		// 	results = append(results, key)
-		// }
-		c.JSON(http.StatusOK, gin.H{"matches": matches})
+		for _, match := range matches {
+			var matchInfo map[string]string
+			// Find received song for each match, if any.
+			if user.ReceivedSongs != "" {
+				songEntries := strings.Split(user.ReceivedSongs, ",")
+				for _, entry := range songEntries {
+					parts := strings.Split(entry, ":")
+					if len(parts) == 2 && parts[0] == match {
+						matchInfo = map[string]string{
+							"from": match,
+							"song": parts[1],
+						}
+						break
+					}
+				}
+			}
+			// If no song was found for this match, set the song as empty.
+			if matchInfo == nil {
+				matchInfo = map[string]string{
+					"from": match,
+					"song": "",
+				}
+			}
+			matchesWithSongs = append(matchesWithSongs, matchInfo)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"matches": matchesWithSongs,
+		})
 		return
-
 	}
+
 	c.JSON(http.StatusOK, gin.H{"msg": "Matches not yet published"})
 }
 

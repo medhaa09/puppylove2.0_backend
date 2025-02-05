@@ -126,8 +126,8 @@ func UserLogout(c *gin.Context) {
 		Value:   "",
 		Expires: time.Unix(0, 0), // Expire the cookie immediately
 		// MaxAge:  -1,
-		Path:     "/",
-		Domain:   os.Getenv("DOMAIN"),
+		Path:   "/",
+		Domain: os.Getenv("DOMAIN"),
 		// HttpOnly: true,
 		// Secure:   false,
 		// SameSite: http.SameSiteStrictMode,

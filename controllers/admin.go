@@ -1,14 +1,16 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/pclubiitk/puppylove2.0_backend/db"
-	"github.com/pclubiitk/puppylove2.0_backend/models"
-	"github.com/pclubiitk/puppylove2.0_backend/utils"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/pclubiitk/puppylove2.0_backend/db"
+	"github.com/pclubiitk/puppylove2.0_backend/models"
+	"github.com/pclubiitk/puppylove2.0_backend/utils"
 )
 
 var Db db.PuppyDb
@@ -69,22 +71,23 @@ func AddNewUser(c *gin.Context) {
 	for _, user := range info.TypeUserNew {
 
 		newUser := models.User{
-			Id:       user.Id,
-			Name:     user.Name,
-			Email:    user.Email,
-			Gender:   user.Gender,
-			Pass:     "",
-			PubK:     "",
-			PrivK:    "",
-			AuthC:    utils.RandStringRunes(15),
-			Data:     "",
-			Submit:   false,
-			Matches:  "",
-			Dirty:    false,
-			Publish:  false,
-			Code:     "",
-			About:    "",
-			Intrests: "{}",
+			Id:            user.Id,
+			Name:          user.Name,
+			Email:         user.Email,
+			Gender:        user.Gender,
+			Pass:          "",
+			PubK:          "",
+			PrivK:         "",
+			AuthC:         utils.RandStringRunes(15),
+			Data:          "",
+			Submit:        false,
+			Matches:       "",
+			ReceivedSongs: "",
+			Dirty:         false,
+			Publish:       false,
+			Code:          "",
+			About:         "",
+			Intrests:      "{}",
 		}
 
 		// Insert the user into the database
@@ -137,36 +140,114 @@ func DeleteAllUsers(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "All Users Deleted successfully."})
 }
 
+// func PublishResults(c *gin.Context) {
+// 	if !models.PublishMatches {
+// 		var matchdb models.MatchTable
+// 		var matches []models.MatchTable
+// 		records := Db.Model(&matchdb).Where("").Find(&matches)
+// 		if records.Error != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Some error occured while calculating matches"})
+// 			return
+// 		}
+// 		matchesMap := make(map[string][]string)
+// 		for _, match := range matches {
+// 			roll1 := match.Roll1
+// 			roll2 := match.Roll2
+// 			//song12 := match.SONG12
+// 			song21 := match.SONG21
+// 			var userdb models.User
+// 			var userdb1 models.User
+// 			record := Db.Model(&userdb).Where("id = ?", roll1).First(&userdb)
+// 			if record.Error != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while connecting to db"})
+// 				return
+// 			}
+// 			record = Db.Model(&userdb1).Where("id = ?", roll2).First(&userdb1)
+// 			if record.Error != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while connecting to db"})
+// 				return
+// 			}
+// 			// if userdb.Publish && userdb1.Publish {
+// 			// 	matchesMap[roll1] = append(matchesMap[roll1], fmt.Sprintf("%s (Song: %s)", roll2, song12))
+// 			// 	matchesMap[roll2] = append(matchesMap[roll2], fmt.Sprintf("%s (Song: %s)", roll1, song21))
+// 			// }
+// 			if userdb.Publish && userdb1.Publish {
+// 				matchesMap[roll1] = append(matchesMap[roll1], roll2)
+// 				matchesMap[roll2] = append(matchesMap[roll2], roll1)
+// 			}
+// 		}
+// 		for key := range matchesMap {
+// 			var userdb models.User
+// 			record := Db.Model(&userdb).Where("id = ?", key).First(&userdb)
+// 			if record.Error != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating matches of " + key})
+// 				return
+// 			}
+// 			tempMap := make(map[string]bool)
+// 			for _, match := range matchesMap[key] {
+// 				tempMap[match] = true
+// 			}
+// 			results := []string{}
+// 			for key := range tempMap {
+// 				results = append(results, key)
+// 			}
+// 			userdb.Matches = strings.Join(results, ",")
+// 			record = Db.Save(&userdb)
+// 			if record.Error != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating matches of " + key})
+// 				return
+// 			}
+
+//			}
+//			models.PublishMatches = true
+//			c.JSON(http.StatusOK, gin.H{"msg": "Published Matches"})
+//			return
+//		}
+//		c.JSON(http.StatusOK, gin.H{"msg": "Matches already published"})
+//	}
 func PublishResults(c *gin.Context) {
 	if !models.PublishMatches {
 		var matchdb models.MatchTable
 		var matches []models.MatchTable
-		records := Db.Model(&matchdb).Where("").Find(&matches)
+		records := Db.Model(&matchdb).Find(&matches)
 		if records.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Some error occured while calculating matches"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Some error occurred while calculating matches"})
 			return
 		}
+
 		matchesMap := make(map[string][]string)
+		songsMap := make(map[string][]string) // Map to store received songs with senders
+
 		for _, match := range matches {
 			roll1 := match.Roll1
 			roll2 := match.Roll2
+			song21 := match.SONG21 // Song sent by roll2 to roll1
+
 			var userdb models.User
 			var userdb1 models.User
+
 			record := Db.Model(&userdb).Where("id = ?", roll1).First(&userdb)
 			if record.Error != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while connecting to db"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occurred while connecting to DB"})
 				return
 			}
 			record = Db.Model(&userdb1).Where("id = ?", roll2).First(&userdb1)
 			if record.Error != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while connecting to db"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occurred while connecting to DB"})
 				return
 			}
+
 			if userdb.Publish && userdb1.Publish {
 				matchesMap[roll1] = append(matchesMap[roll1], roll2)
 				matchesMap[roll2] = append(matchesMap[roll2], roll1)
+
+				// Store received song with sender info only if song21 is not empty
+				if song21 != "" {
+					songsMap[roll1] = append(songsMap[roll1], fmt.Sprintf("%s:%s", roll2, song21))
+				}
 			}
 		}
+
 		for key := range matchesMap {
 			var userdb models.User
 			record := Db.Model(&userdb).Where("id = ?", key).First(&userdb)
@@ -174,21 +255,33 @@ func PublishResults(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating matches of " + key})
 				return
 			}
-			tempMap := make(map[string]bool)
+
+			// Remove duplicate matches
+			tempMatchMap := make(map[string]bool)
 			for _, match := range matchesMap[key] {
-				tempMap[match] = true
+				tempMatchMap[match] = true
 			}
 			results := []string{}
-			for key := range tempMap {
-				results = append(results, key)
+			for match := range tempMatchMap {
+				results = append(results, match)
 			}
 			userdb.Matches = strings.Join(results, ",")
+
+			// Ensure that if no song is received, store an empty string
+			if len(songsMap[key]) == 0 {
+				userdb.ReceivedSongs = ""
+			} else {
+				userdb.ReceivedSongs = strings.Join(songsMap[key], ",")
+			}
+
+			// Save updated user data
 			record = Db.Save(&userdb)
 			if record.Error != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating matches of " + key})
 				return
 			}
 		}
+
 		models.PublishMatches = true
 		c.JSON(http.StatusOK, gin.H{"msg": "Published Matches"})
 		return

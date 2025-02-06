@@ -147,9 +147,11 @@ func PublishResults(c *gin.Context) {
 			return
 		}
 		matchesMap := make(map[string][]string)
+		songsMap := make(map[string][]string)
 		for _, match := range matches {
 			roll1 := match.Roll1
 			roll2 := match.Roll2
+			song12 := match.Song12
 			var userdb models.User
 			var userdb1 models.User
 			record := Db.Model(&userdb).Where("id = ?", roll1).First(&userdb)
@@ -165,6 +167,13 @@ func PublishResults(c *gin.Context) {
 			if userdb.Publish && userdb1.Publish {
 				matchesMap[roll1] = append(matchesMap[roll1], roll2)
 				matchesMap[roll2] = append(matchesMap[roll2], roll1)
+
+				if song12 != "" {
+					songsMap[roll2] = append(songsMap[roll2], song12)
+				} else {
+					// You can choose to append a placeholder or leave it empty
+					songsMap[roll2] = append(songsMap[roll2], "") // Empty string to indicate no song received
+				}
 			}
 		}
 		for key := range matchesMap {
@@ -183,6 +192,10 @@ func PublishResults(c *gin.Context) {
 				results = append(results, key)
 			}
 			userdb.Matches = strings.Join(results, ",")
+			if receivedSongs, ok := songsMap[key]; ok {
+				userdb.ReceivedSongs = strings.Join(receivedSongs, ",")
+			}
+
 			record = Db.Save(&userdb)
 			if record.Error != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating matches of " + key})

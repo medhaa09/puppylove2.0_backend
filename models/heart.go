@@ -48,6 +48,7 @@ type VerifyHeartClaim struct {
 type VerifyReturnHeartClaim struct {
 	Enc    string `json:"enc" binding:"required"`
 	Secret string `json:"secret" binding:"required"`
+	Song   string `json:"song" `
 }
 
 type FetchHeartsFirst struct {
@@ -108,7 +109,8 @@ type FetchReturnHeart struct {
 type (
 	MatchTable struct {
 		gorm.Model
-		Roll1 string `json:"roll1" bson:"roll1"`
-		Roll2 string `json:"roll2" bson:"roll2"`
+		Roll1  string `json:"roll1" bson:"roll1"`
+		Roll2  string `json:"roll2" bson:"roll2"`
+		Song12 string `json:"song12" bson:"song12"`
 	}
 )

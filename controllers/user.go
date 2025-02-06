@@ -422,6 +422,7 @@ func VerifyReturnHeart(c *gin.Context) {
 	var heartClaim models.HeartClaims
 	Db.Model(heartClaim).Where("sha = ?", hash).First(&heartClaim)
 	userID, _ := c.Get("user_id")
+	song := info.Song
 	// roll1 := userID.(string)
 	// roll2 := heartClaim.Roll
 
@@ -459,8 +460,9 @@ func VerifyReturnHeart(c *gin.Context) {
 	// }
 
 	returnHeartClaim := models.MatchTable{
-		Roll1: userID.(string),
-		Roll2: heartClaim.Roll,
+		Roll1:  userID.(string),
+		Roll2:  heartClaim.Roll,
+		Song12: song,
 	}
 	if err := Db.Create(&returnHeartClaim).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -470,33 +472,79 @@ func VerifyReturnHeart(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{"message": "Heart Claim Success"})
 }
 
+// func MatchesHandler(c *gin.Context) {
+// 	if models.PublishMatches {
+
+// 		// resultsmap := make(map[string]bool)
+// 		userID, _ := c.Get("user_id")
+// 		var user models.User
+
+// 		Db.Model(&user).Where("id=?", userID).First(&user)
+
+// 		if !user.Publish {
+// 			c.JSON(http.StatusOK, gin.H{"msg": "You choose not to publish results"})
+// 			return
+// 		}
+
+// 		matches := strings.Split(user.Matches, ",")
+
+// 		// for _, match := range matches {
+// 		// 	resultsmap[match] = true
+// 		// }
+// 		// results := []string{}
+// 		// for key := range resultsmap {
+// 		// 	results = append(results, key)
+// 		// }
+// 		c.JSON(http.StatusOK, gin.H{"matches": matches})
+// 		return
+
+//		}
+//		c.JSON(http.StatusOK, gin.H{"msg": "Matches not yet published"})
+//	}
 func MatchesHandler(c *gin.Context) {
 	if models.PublishMatches {
 
-		// resultsmap := make(map[string]bool)
+		// Get user ID from context
 		userID, _ := c.Get("user_id")
 		var user models.User
 
+		// Fetch user details from the database
 		Db.Model(&user).Where("id=?", userID).First(&user)
 
+		// Check if the user has chosen to publish results
 		if !user.Publish {
 			c.JSON(http.StatusOK, gin.H{"msg": "You choose not to publish results"})
 			return
 		}
 
+		// Split the user's matches and received songs strings into slices
 		matches := strings.Split(user.Matches, ",")
+		receivedSongs := strings.Split(user.ReceivedSongs, ",")
 
-		// for _, match := range matches {
-		// 	resultsmap[match] = true
-		// }
-		// results := []string{}
-		// for key := range resultsmap {
-		// 	results = append(results, key)
-		// }
-		c.JSON(http.StatusOK, gin.H{"matches": matches})
+		// Initialize a slice to store the formatted match data
+		var matchDetails []map[string]interface{}
+
+		// Ensure that matches and receivedSongs arrays are of the same length
+		if len(matches) != len(receivedSongs) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Mismatch between matches and received songs"})
+			return
+		}
+
+		// Iterate through the matches and their corresponding received songs
+		for i, matchID := range matches {
+			// Add the match details directly to the result array, including the match ID and the received song
+			matchDetails = append(matchDetails, map[string]interface{}{
+				"id":   matchID,
+				"song": receivedSongs[i],
+			})
+		}
+
+		// Return the match details
+		c.JSON(http.StatusOK, gin.H{"matches": matchDetails})
 		return
 
 	}
+
 	c.JSON(http.StatusOK, gin.H{"msg": "Matches not yet published"})
 }
 
